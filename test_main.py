@@ -155,7 +155,8 @@ def test_install_plugin(tmp_path):
         install_plugin()
 
     assert plugins_file.exists()
-    plugins = json.loads(plugins_file.read_text())
+    registry = json.loads(plugins_file.read_text())
+    plugins = registry["plugins"]
     assert len(plugins) == 1
     assert plugins[0]["name"] == "gleann-plugin-marker"
     assert plugins[0]["capabilities"] == ["document-extraction"]
@@ -168,17 +169,18 @@ def test_install_plugin_replaces_existing(tmp_path):
     gleann_dir.mkdir()
     plugins_file = gleann_dir / "plugins.json"
 
-    existing = [
+    existing = {"plugins": [
         {"name": "gleann-plugin-marker", "url": "http://old:1234"},
         {"name": "gleann-plugin-docs", "url": "http://localhost:8765"},
-    ]
+    ]}
     plugins_file.write_text(json.dumps(existing))
 
     with patch("main.Path.home", return_value=tmp_path):
         from main import install_plugin
         install_plugin()
 
-    plugins = json.loads(plugins_file.read_text())
+    registry = json.loads(plugins_file.read_text())
+    plugins = registry["plugins"]
     assert len(plugins) == 2
     marker = [p for p in plugins if p["name"] == "gleann-plugin-marker"][0]
     assert "serve" in str(marker["command"])

@@ -115,13 +115,13 @@ async def convert(file: UploadFile = File(...)):
             pass
 
     # Parse markdown into graph nodes + edges
-    nodes, edges = section_parser.parse_document(
+    result = section_parser.parse_document(
         markdown, file.filename or "document"
     )
 
     return {
-        "nodes": nodes,
-        "edges": edges,
+        "nodes": [n.to_dict() for n in result.nodes],
+        "edges": [e.to_dict() for e in result.edges],
         "markdown": markdown,
         "backend": backend_used,
     }
@@ -138,17 +138,25 @@ def install_plugin():
     plugins_dir.mkdir(parents=True, exist_ok=True)
     plugins_file = plugins_dir / "plugins.json"
 
-    plugins = []
+    registry = {"plugins": []}
     if plugins_file.exists():
         try:
-            plugins = json.loads(plugins_file.read_text())
+            content = plugins_file.read_text().strip()
+            if content:
+                registry = json.loads(content)
+                # Handle legacy flat-array format
+                if isinstance(registry, list):
+                    registry = {"plugins": registry}
         except (json.JSONDecodeError, OSError):
-            plugins = []
+            registry = {"plugins": []}
 
     # Remove existing entry for this plugin
-    plugins = [p for p in plugins if p.get("name") != PLUGIN_NAME]
+    registry["plugins"] = [
+        p for p in registry["plugins"]
+        if isinstance(p, dict) and p.get("name") != PLUGIN_NAME
+    ]
 
-    plugins.append({
+    registry["plugins"].append({
         "name": PLUGIN_NAME,
         "url": PLUGIN_URL,
         "command": [sys.executable, str(Path(__file__).resolve()), "--serve"],
@@ -157,7 +165,7 @@ def install_plugin():
         "timeout": 120,
     })
 
-    plugins_file.write_text(json.dumps(plugins, indent=2))
+    plugins_file.write_text(json.dumps(registry, indent=2))
     logger.info("Installed %s → %s", PLUGIN_NAME, plugins_file)
     print(f"✓ Installed {PLUGIN_NAME} → {plugins_file}")
 
