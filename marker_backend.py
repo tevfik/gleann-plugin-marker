@@ -124,7 +124,7 @@ def convert_document(
         text = linkify_urls(text)
 
     page_count = None
-    if metadata:
+    if isinstance(metadata, dict):
         page_stats = metadata.get("page_stats", [])
         if page_stats:
             page_count = len(page_stats)
@@ -132,5 +132,5 @@ def convert_document(
     return {
         "markdown": text,
         "page_count": page_count,
-        "metadata": metadata,
+        "metadata": metadata if isinstance(metadata, dict) else {},
     }
